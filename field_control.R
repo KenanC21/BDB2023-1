@@ -3,8 +3,9 @@ library(gganimate)
 library(matlib)
 library(pracma)
 library(future)
+library(sf)
 ###### Field control Final #####
-
+setwd("/Users/michaelegle/BDB2023")
 # Initialize an empty dataframe so that it's in the global environment
 week_track <- data.frame()
 play <- data.frame()
@@ -157,10 +158,11 @@ find_frame_influence <- function(frame_id, play)
   all_points_y <- rep(all_points$Y, length(this_frame_player_ids))
   
   grid <- data.frame(player_id = player_id_sequence, x_point = all_points_x, y_point = all_points_y)
-  tictoc::tic()
+
+  future::plan("multisession", workers = 4)
   all_players_frame_influence <- furrr::future_pmap_dfr(.l = list(grid$player_id, grid$x_point, grid$y_point), .f = player_influence, frame = frame) %>%
     mutate(frameId = frame_id)
-  tictoc::toc()
+
   
   # TODO - there will have to be a little bit more work done right here to establish the amount of space "owned" by a player
   # As of this point there's one observation per player per point, should be aggregated down to one observation per player
@@ -188,7 +190,6 @@ find_play_influence <- function(play_id, game)
     pull(frameId) %>%
     unique()
   # first find the IDs for players we're interested in for this play
-  
   all_players_play_influence <- furrr::future_map_dfr(.x = this_play_frame_ids, .f = find_frame_influence, play = play) %>%
     mutate(playId = play_id)
   
@@ -212,11 +213,10 @@ find_game_influence <- function(game_id, week_track)
     pull(playId) %>%
     unique()
   
-  future::plan("multisession")
-  furrr::future_map_dfr(.x = this_game_play_ids, .f = find_play_influence, game = game)
+  game_influence <- furrr::future_map_dfr(.x = this_game_play_ids, .f = find_play_influence, game = game)
   
   # TODO - CHANGE THIS TO NOT BE EMPTY
-  return(data.frame())
+  return(game_influence)
 }
 
 #'
@@ -229,7 +229,7 @@ find_week_influence <- function(week_track)
   # First, standardize the coordinates and the direction and orientation so all the plays are going in the same direction
   play_end_events <- c("pass_forward", "autoevent_passforward", "run", "qb_sack", "qb_strip_sack", "out_of_bounds",
                        "fumble_offense_recovered", "handoff", "fumble", "first_contact") # handoff is questionable. since we're concerned with pass protection, handoff could indicate a trick play
-  week_track <<- week_track %>%
+  week_track <- week_track %>%
     mutate(x = ifelse(playDirection == "left", 120 - x, x),
            y = ifelse(playDirection == "left", 160/3 - y, y),
            dir = case_when(playDirection == "left" & dir <= 180 ~ dir + 180,
@@ -251,7 +251,11 @@ find_week_influence <- function(week_track)
            end_box_down = min(y[pff_role == "Pass Block" & frameId == snap_frame], na.rm = T)) %>%
     ungroup() %>%
     filter(pff_role %in% c("Pass Rush", "Pass Block") | team == "football") %>% # Only keep the blockers, rushers, and the ball 
-    filter(frameId >= snap_frame, frameId <= end_frame)
+    filter(frameId == snap_frame | frameId == end_frame) %>%
+    group_by(gameId, playId) %>%
+    mutate(n_frames = length(unique(frameId))) %>%
+    filter(n_frames == 2) %>%
+    select(-n_frames)
   
   this_week_game_ids <- week_track %>%
     pull(gameId) %>%
