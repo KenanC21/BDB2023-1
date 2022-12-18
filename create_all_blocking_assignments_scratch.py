@@ -17,6 +17,8 @@ print(pass_block_rush.head)
 
 frames = pass_block_rush[['gameId', 'playId', 'frameId']].drop_duplicates()
 
+frames = frames[0:1]
+results = pd.DataFrame()
 start_time = time.time()
 for index, iter_frame in frames.iterrows():
     game = iter_frame.gameId
@@ -39,7 +41,19 @@ for index, iter_frame in frames.iterrows():
             def_players.append(p)
     
     assignment = ba.Assignment(off_players, def_players, frame, play, game)
+    test_backtrack = assignment.backtrack()
+    print(test_backtrack)
 
+    for lineman in test_backtrack.off_players:
+        lineman_nflId = lineman.player_id
+        if lineman.blocking_assignment is None:
+            defender_nflId = None
+        else:
+            defender_nflId = lineman.blocking_assignment.player_id
+        results = pd.concat([results, pd.DataFrame(data = [[game, play, frame, lineman_nflId, defender_nflId]], columns = ['gameId', 'playId', 'frameId', 'lineman_nflId', 'defender_nflId'])])
+
+
+print(results)
 end_time = time.time()
 
 print(end_time - start_time)

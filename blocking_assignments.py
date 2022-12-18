@@ -43,12 +43,12 @@ class Assignment:
         self.play_id = play_id
         self.game_id = game_id
 
-    def assign(off_player, def_player):
+    def assign(self, off_player, def_player):
         # TODO
         off_player.assign_block(def_player)
         def_player.assign_block(off_player)
 
-    def remove_assignment(off_player):
+    def remove_assignment(self, off_player):
         # TODO - unsure if we'll need this or not? 
         off_player.blocking_assignment.blocking_assignment = None
         off_player.blocking_assignment = None
@@ -56,7 +56,21 @@ class Assignment:
 
     def backtrack(self):
         # TODO
-        return None
+        unassigned_players = 0
+        for ol in self.off_players: # first check if all players have an assignment
+            if (ol.blocking_assignment is None):
+                unassigned_players = unassigned_players + 1
+        if unassigned_players == 0:
+            return self
+        for lineman in self.off_players:
+            if lineman.blocking_assignment is None:
+                potential_assignments = lineman.potential_assignments(self.def_players)
+                for defender in potential_assignments:
+                    if defender.blocking_assignment is None:
+                        self.assign(lineman, defender)
+                        result = self.backtrack()
+                        #self.remove_assignment(lineman)
+        return self
 
     # https://github.com/aimacode/aima-java/blob/AIMA3e/notebooks/ConstraintSatisfactionProblems.ipynb
     # ^ helpful resource with CSP stuff
