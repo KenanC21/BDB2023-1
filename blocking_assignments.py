@@ -42,6 +42,8 @@ class Assignment:
         self.frame_id = frame_id
         self.play_id = play_id
         self.game_id = game_id
+        self.all_possible_blocking_assignments = []
+        self.backtracked = False
 
     def assign(self, off_player, def_player):
         # TODO
@@ -61,7 +63,8 @@ class Assignment:
             if (ol.blocking_assignment is None):
                 unassigned_players = unassigned_players + 1
         if unassigned_players == 0:
-            return self
+            # instead add the assignment to the list
+            self.all_possible_blocking_assignments.append(self)
         for lineman in self.off_players:
             if lineman.blocking_assignment is None:
                 potential_assignments = lineman.potential_assignments(self.def_players)
@@ -69,11 +72,51 @@ class Assignment:
                     if defender.blocking_assignment is None:
                         self.assign(lineman, defender)
                         result = self.backtrack()
-                        #self.remove_assignment(lineman)
-        return self
+                        for result_assignment in result:
+                            self.all_possible_blocking_assignments.append(result_assignment) # this is causing an infinite loop for some reason, I have a feeling it's a deep vs shallow copy issue?
+                        self.remove_assignment(lineman)
+        self.backtracked = True
+        # add assignment to the list right here
+        self.all_possible_blocking_assignments.append(self)
+        return self.all_possible_blocking_assignments
 
     # https://github.com/aimacode/aima-java/blob/AIMA3e/notebooks/ConstraintSatisfactionProblems.ipynb
     # ^ helpful resource with CSP stuff
+
+
+    def unblocked_defenders(self):
+        if self.backtracked:
+            num_unblocked = 0
+            for defender in self.def_players:
+                if defender.blocking_assignment is None:
+                    num_unblocked += 1
+            return num_unblocked
+        else:
+            return None
+
+    def unassigned_linemen(self):
+        if self.backtracked:
+            # TODO
+            num_unassigned = 0
+            for lineman in self.off_players:
+                if lineman.blocking_assignment is None:
+                    num_unassigned += 1
+            return num_unassigned
+        else:
+            return None
+
+    def cumulative_blocking_distance(self):
+        if self.backtracked:
+            distance = 0
+            for lineman in self.off_players:
+                if lineman.blocking_assignment is not None:
+                    distance += lineman.distance_from_player(lineman.blocking_assignment)
+            return distance
+        else:
+            return None
+        
+    def copy(self):
+        return Assignment(self.off_players, self.def_players, self.frame_id, self.play_id, self.game_id)
 
 
 # Just for testing purposes. Can be removed later if not needed
