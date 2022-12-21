@@ -29,6 +29,11 @@ class Player:
 
     def assign_block(self, player):
         self.blocking_assignment = player
+    
+    def copy(self):
+        new_player = Player(self.player_id, self.x, self.y, self.on_offense)
+        return new_player
+
 
 
 class Assignment:
@@ -42,7 +47,6 @@ class Assignment:
         self.frame_id = frame_id
         self.play_id = play_id
         self.game_id = game_id
-        self.all_possible_blocking_assignments = []
         self.backtracked = False
 
     def assign(self, off_player, def_player):
@@ -55,30 +59,33 @@ class Assignment:
         off_player.blocking_assignment.blocking_assignment = None
         off_player.blocking_assignment = None
 
-
+    # TODO - this is "good enough" to return a sufficient answer but it could be better, just need to eliminate the double counting. not sure where it's coming from
     def backtrack(self):
         # TODO
+        this_assignment = self.copy()
         unassigned_players = 0
-        for ol in self.off_players: # first check if all players have an assignment
+        all_possible_blocking_assignments = []
+        for ol in this_assignment.off_players: # first check if all players have an assignment
             if (ol.blocking_assignment is None):
                 unassigned_players = unassigned_players + 1
         if unassigned_players == 0:
             # instead add the assignment to the list
-            self.all_possible_blocking_assignments.append(self)
-        for lineman in self.off_players:
+            all_possible_blocking_assignments.append(this_assignment)
+        for lineman in this_assignment.off_players:
             if lineman.blocking_assignment is None:
-                potential_assignments = lineman.potential_assignments(self.def_players)
+                potential_assignments = lineman.potential_assignments(this_assignment.def_players)
                 for defender in potential_assignments:
                     if defender.blocking_assignment is None:
-                        self.assign(lineman, defender)
-                        result = self.backtrack()
+                        this_assignment.assign(lineman, defender)
+                        result = this_assignment.backtrack()
                         for result_assignment in result:
-                            self.all_possible_blocking_assignments.append(result_assignment) # this is causing an infinite loop for some reason, I have a feeling it's a deep vs shallow copy issue?
-                        self.remove_assignment(lineman)
+                            all_possible_blocking_assignments.append(result_assignment) 
+                        this_assignment.remove_assignment(lineman)
         self.backtracked = True
+        this_assignment.backtracked = True
         # add assignment to the list right here
-        self.all_possible_blocking_assignments.append(self)
-        return self.all_possible_blocking_assignments
+        all_possible_blocking_assignments.append(this_assignment)
+        return all_possible_blocking_assignments
 
     # https://github.com/aimacode/aima-java/blob/AIMA3e/notebooks/ConstraintSatisfactionProblems.ipynb
     # ^ helpful resource with CSP stuff
@@ -116,7 +123,25 @@ class Assignment:
             return None
         
     def copy(self):
-        return Assignment(self.off_players, self.def_players, self.frame_id, self.play_id, self.game_id)
+        copy_off_players = []
+        copy_def_players = []
+
+        for o in self.off_players:
+            copy = o.copy()
+            if o.blocking_assignment is not None:
+                defender_copy = o.blocking_assignment.copy()
+                copy.assign_block(defender_copy)
+                defender_copy.assign_block(copy)
+            copy_off_players.append(copy)
+
+        for d in self.def_players:
+            copy = d.copy()
+            if d.blocking_assignment is not None:
+                blocker_copy = d.blocking_assignment.copy()
+                copy.assign_block(blocker_copy)
+                blocker_copy.assign_block(copy)
+            copy_def_players.append(copy)
+        return Assignment(copy_off_players, copy_def_players, self.frame_id, self.play_id, self.game_id)
 
 
 # Just for testing purposes. Can be removed later if not needed

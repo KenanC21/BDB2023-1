@@ -1,6 +1,7 @@
 import pandas as pd
 import blocking_assignments as ba
 import time
+import math
 
 week1 = pd.read_csv('week1.csv')
 pff = pd.read_csv('pffScoutingData.csv')
@@ -41,11 +42,13 @@ for index, iter_frame in frames.iterrows():
             def_players.append(p)
     
     assignment = ba.Assignment(off_players, def_players, frame, play, game)
-    test_backtrack = assignment.backtrack()
+    all_backtrack = assignment.backtrack()
 
-    print(len(test_backtrack))
-
-    #for lineman in test_backtrack.off_players:
+    for b in all_backtrack:
+        if b.unassigned_linemen() == 1:
+            print(b.cumulative_blocking_distance())
+    
+    #for lineman in all_backtrack.off_players:
     #    lineman_nflId = lineman.player_id
     #    if lineman.blocking_assignment is None:
     #        defender_nflId = None
