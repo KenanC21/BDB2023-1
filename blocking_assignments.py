@@ -13,6 +13,7 @@ class Player:
         self.y = y
         self.on_offense = on_offense
         self.blocking_assignment = None
+        self.visited = False
 
     def distance_from_player(self, player):
         return np.sqrt((self.x - player.x) ** 2 + (self.y - player.y) ** 2)
@@ -30,8 +31,12 @@ class Player:
     def assign_block(self, player):
         self.blocking_assignment = player
     
+    def visit(self):
+        self.visited = True
+
     def copy(self):
         new_player = Player(self.player_id, self.x, self.y, self.on_offense)
+        new_player.visited = self.visited
         return new_player
 
 
@@ -39,7 +44,6 @@ class Player:
 class Assignment:
 
     def __init__(self, off_players, def_players, frame_id, play_id, game_id):
-        # TODO
         self.off_players = off_players
         self.def_players = def_players
         self.num_off_players = len(off_players)
@@ -50,12 +54,10 @@ class Assignment:
         self.backtracked = False
 
     def assign(self, off_player, def_player):
-        # TODO
         off_player.assign_block(def_player)
         def_player.assign_block(off_player)
 
     def remove_assignment(self, off_player):
-        # TODO - unsure if we'll need this or not? 
         off_player.blocking_assignment.blocking_assignment = None
         off_player.blocking_assignment = None
 
@@ -63,16 +65,17 @@ class Assignment:
     def backtrack(self):
         # TODO
         this_assignment = self.copy()
-        unassigned_players = 0
+        unvisited_players = 0
         all_possible_blocking_assignments = []
         for ol in this_assignment.off_players: # first check if all players have an assignment
-            if (ol.blocking_assignment is None):
-                unassigned_players = unassigned_players + 1
-        if unassigned_players == 0:
+            if (not ol.visited):
+                unvisited_players = unvisited_players + 1
+        #if unvisited_players == 0: # Not sure if this part is necessary, it could be causing the double counting
             # instead add the assignment to the list
-            all_possible_blocking_assignments.append(this_assignment)
+        #    all_possible_blocking_assignments.append(this_assignment)
         for lineman in this_assignment.off_players:
-            if lineman.blocking_assignment is None:
+            if not lineman.visited:
+                lineman.visit()
                 potential_assignments = lineman.potential_assignments(this_assignment.def_players)
                 for defender in potential_assignments:
                     if defender.blocking_assignment is None:

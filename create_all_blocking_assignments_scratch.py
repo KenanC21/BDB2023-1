@@ -44,6 +44,8 @@ for index, iter_frame in frames.iterrows():
     assignment = ba.Assignment(off_players, def_players, frame, play, game)
     all_backtrack = assignment.backtrack()
 
+    print(len(all_backtrack))
+
     for b in all_backtrack:
         if b.unassigned_linemen() == 1:
             print(b.cumulative_blocking_distance())
