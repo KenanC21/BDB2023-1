@@ -70,9 +70,6 @@ class Assignment:
         for ol in this_assignment.off_players: # first check if all players have an assignment
             if (not ol.visited):
                 unvisited_players = unvisited_players + 1
-        #if unvisited_players == 0: # Not sure if this part is necessary, it could be causing the double counting
-            # instead add the assignment to the list
-        #    all_possible_blocking_assignments.append(this_assignment)
         for lineman in this_assignment.off_players:
             if not lineman.visited:
                 lineman.visit()
@@ -145,31 +142,3 @@ class Assignment:
                 blocker_copy.assign_block(copy)
             copy_def_players.append(copy)
         return Assignment(copy_off_players, copy_def_players, self.frame_id, self.play_id, self.game_id)
-
-
-# Just for testing purposes. Can be removed later if not needed
-test = Player(12031, 35.12, 30.23, True)
-print(test.player_id)
-print(test.x)
-print(test.y)
-print(test.on_offense)
-print(test.blocking_assignment)
-
-
-def1 = Player(12503, 28.14, 28.45, False)
-def2 = Player(12504, 30, 28.45, False)
-def3 = Player(12505, 35.89, 28.45, False)
-def4 = Player(12506, 40, 30.21, False)
-def5 = Player(12507, 36.54, 29.78, False)
-
-
-print(test.distance_from_player(def1))
-print(test.distance_from_player(def2))
-print(test.distance_from_player(def3))
-print(test.distance_from_player(def4))
-print(test.distance_from_player(def5))
-
-assignments = test.potential_assignments([def1, def2, def3, def4, def5])
-
-for a in assignments:
-    print(a.player_id)
