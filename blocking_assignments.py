@@ -39,6 +39,13 @@ class Player:
         new_player.visited = self.visited
         return new_player
 
+    # There's a weird error that occurs in the zip() function for ordering the defenders, where on the off chance that there is a tie in distance (this happens at least once)
+    # an error is thrown, so we need to have a less than and greater than function. This is ONLY used for that purpose and nowhere else in the code
+    def __gt__(self, other):
+        return self.y > other.y
+
+    def __lt__(self, other):
+        return self.y < other.y
 
 
 class Assignment:
