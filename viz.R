@@ -1,0 +1,94 @@
+##### VISUALIZATIONS ######
+source("field_control.R")
+library(ggnewscale)
+week1 <- read_csv("week1.csv")
+pff <- read_csv("pffScoutingData.csv")
+plays <- read_csv("plays.csv")
+week1_blocking <- read_csv("week1_blocking_assignments.csv")
+
+###### Get screenshot of example play for illustrating how the backtracking and forward checking works
+
+play_end_events <- c("pass_forward", "autoevent_passforward", "run", "qb_sack", "qb_strip_sack", "out_of_bounds",
+                     "fumble_offense_recovered", "handoff", "fumble", "first_contact")
+
+week1 <- week1 %>%
+  mutate(x = ifelse(playDirection == "left", 120 - x, x),
+         y = ifelse(playDirection == "left", 160/3 - y, y),
+         dir = case_when(playDirection == "left" & dir <= 180 ~ dir + 180,
+                         playDirection == "left" & dir > 180 ~ dir - 180,
+                         T ~ dir),
+         o = case_when(playDirection == "left" & o <= 180 ~ o + 180,
+                       playDirection == "left" & o > 180 ~ o - 180,
+                       T ~ o),
+         dir = dir / 180 * pi,
+         o = o / 180 * pi) %>%
+  left_join(pff) %>% # Now add the info from PFF and the play by play info
+  left_join(plays) %>%
+  group_by(gameId, playId) %>%
+  mutate(rushing_qb = pff_role == "Pass Rush",
+         snap_frame = max(frameId[event == "ball_snap"]),
+         end_frame = first(frameId[event %in% play_end_events]),
+         los = first(x[team == "football" & frameId == snap_frame]),
+         end_box_up = max(y[pff_role == "Pass Block" & frameId == snap_frame], na.rm = T),
+         end_box_down = min(y[pff_role == "Pass Block" & frameId == snap_frame], na.rm = T)) %>%
+  ungroup() %>%
+  filter(pff_role %in% c("Pass Rush", "Pass Block") | team == "football") %>% # Only keep the blockers, rushers, and the ball 
+  filter(frameId >= snap_frame, frameId <= end_frame)
+
+example_play <- week1 %>%
+  filter(gameId == 2021090900, playId == 97, frameId == snap_frame)
+
+example_play_plot <- example_play %>%
+  filter(team != "football") %>%
+  ggplot(aes(x = y, y = x, color = team, group = nflId)) +
+  geom_point(size = 15) +
+  geom_text(data = example_play %>% filter(team != "football"), aes(x = y, y = x, label = jerseyNumber), color = "white",
+                        vjust = 0.36, size = 7.5) +
+  coord_fixed() +
+  scale_color_manual(values = c("#e31837", "#002244"), guide = "none") +
+  xlim(c(18, 34)) +
+  ylim(c(40, 45)) +
+  theme_minimal() +
+  theme_void()
+
+ggsave(plot = example_play_plot, filename = "example_play.jpeg", width = 8, units = "in")
+
+
+
+# create sample play gif to illustrate how the field control works over the course of a play
+
+example_play <- week1 %>%
+  filter(gameId == 2021090900, playId == 97)
+
+example_play_influence <- find_play_influence(97, example_play)
+
+team_example_play_influence <- example_play_influence %>%
+  group_by(x, y, frameId) %>%
+  summarize(team_control = sum(influence[team == "TB"]) - sum(influence[team == "DAL"]), # use exponential function as defined in Fernandez and Bornn's paper
+            team_control = exp(team_control) / (1 + exp(team_control)),
+            ownership = round(team_control))
+
+ggplot() +
+  geom_raster(data = team_example_play_influence, aes(x = x, y = y, fill = team_control), alpha = 0.7, interpolate = T) +
+  scale_fill_gradient(high = "#e31837", low = "#002244",
+                      limits = c(0, 1)) +
+  new_scale("fill") +
+  geom_point(data = example_play, aes(x = x, y = y, color = team, group = nflId), alpha = 0.7,
+             size = 6.5) +
+  scale_color_manual(values = c("#002244", "#654321", "#e31837"), guide = "none") +
+  geom_text(data = example_play, aes(x = x, y = y, label = jerseyNumber), color = "white",
+            vjust = 0.36, size = 3.5) +
+  transition_time(frameId) +
+  coord_fixed() +
+  ease_aes('linear') -> anim
+
+play.length.ex <- max(team_example_play_influence$frameId)
+
+animate(anim, fps = 10, nframes = play.length.ex + 5, width = 1000, end_pause = 5)
+
+anim_save("field_control_example.gif")
+
+# create a sample play gif to illustrate how the blocking assignments work and how they change over a play
+
+
+
