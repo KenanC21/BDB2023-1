@@ -48,7 +48,7 @@ example_play_plot <- example_play %>%
   scale_color_manual(values = c("#e31837", "#002244"), guide = "none") +
   xlim(c(18, 34)) +
   ylim(c(40, 45)) +
-  theme_minimal() +
+  theme(text = element_text(family = "Roboto")) +
   theme_void()
 
 ggsave(plot = example_play_plot, filename = "example_play.jpeg", width = 8, units = "in")
@@ -90,5 +90,30 @@ anim_save("field_control_example.gif")
 
 # create a sample play gif to illustrate how the blocking assignments work and how they change over a play
 
+min_frame <- min(example_play$frameId)
+max_frame <- max(example_play$frameId)
+
+example_play_blocking <- week1_blocking %>%
+  filter(frameId >= min_frame, frameId <= max_frame) %>%
+  mutate(defender_nflId = replace_na(defender_nflId, 0)) %>% # if it's NA it causes an issue with the join where a player's connected to the football, has no impact on analysis, just the viz
+  filter(gameId == 2021090900, playId == 97) %>%
+  left_join(example_play %>% select(lineman_nflId = nflId, frameId, lineman_x = x, lineman_y = y)) %>%
+  left_join(example_play %>% select(defender_nflId = nflId, frameId, defender_x = x, defender_y = y))
+
+ggplot() +
+  geom_segment(aes(x = lineman_x, y = lineman_y, xend = defender_x, yend = defender_y), data = example_play_blocking) +
+  geom_point(data = example_play, aes(x = x, y = y, color = team, group = nflId), alpha = 0.7,
+             size = 6.5) +
+  scale_color_manual(values = c("#002244", "#654321", "#e31837"), guide = "none") +
+  geom_text(data = example_play, aes(x = x, y = y, label = jerseyNumber), color = "white",
+            vjust = 0.36, size = 3.5) +
+  transition_time(frameId) +
+  theme(text = element_text(family = "Roboto")) +
+  ease_aes('linear') +
+  coord_fixed() -> anim
+
+animate(anim, fps = 10, nframes = play.length.ex + 5, width = 1000, end_pause = 5)
+
+anim_save("blocking_assignment_example.gif")
 
 
