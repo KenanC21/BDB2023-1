@@ -5,7 +5,7 @@ library(pracma)
 library(future)
 library(sf)
 ###### Field control Final #####
-setwd("/Users/michaelegle/BDB2023")
+#setwd("/Users/michaelegle/BDB2023")
 # Initialize an empty dataframe so that it's in the global environment
 week_track <- data.frame()
 play <- data.frame()
@@ -159,7 +159,7 @@ find_frame_influence <- function(frame_id, play)
   
   grid <- data.frame(player_id = player_id_sequence, x_point = all_points_x, y_point = all_points_y)
 
-  future::plan("multisession", workers = 4)
+  future::plan("multisession")
   all_players_frame_influence <- furrr::future_pmap_dfr(.l = list(grid$player_id, grid$x_point, grid$y_point), .f = player_influence, frame = frame) %>%
     mutate(frameId = frame_id)
 
@@ -190,6 +190,7 @@ find_play_influence <- function(play_id, game)
     pull(frameId) %>%
     unique()
   # first find the IDs for players we're interested in for this play
+  future::plan("multisession")
   all_players_play_influence <- furrr::future_map_dfr(.x = this_play_frame_ids, .f = find_frame_influence, play = play) %>%
     mutate(playId = play_id)
   
@@ -213,7 +214,8 @@ find_game_influence <- function(game_id, week_track)
     pull(playId) %>%
     unique()
   
-  game_influence <- furrr::future_map_dfr(.x = this_game_play_ids, .f = find_play_influence, game = game)
+  game_influence <- furrr::future_map_dfr(.x = this_game_play_ids, .f = find_play_influence, game = game) %>%
+    mutate(gameId = game_id)
   
   # TODO - CHANGE THIS TO NOT BE EMPTY
   return(game_influence)
@@ -261,7 +263,6 @@ find_week_influence <- function(week_track)
     pull(gameId) %>%
     unique()
   
-  future::plan("multisession")
   week_field_control <- furrr::future_map_dfr(.x = this_week_game_ids, .f = find_game_influence, week_track = week_track)
   
   return(week_field_control)
