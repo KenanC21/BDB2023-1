@@ -214,6 +214,7 @@ offensive_players_half_seasons %>%
 
 
 
+
 ### JOINED ###
 all_linemen = rbind(offensive_players, defensive_players)
 
@@ -229,3 +230,6 @@ ggplot(all_linemen, aes(x = avg_net_influence, y = officialPosition, fill = offi
        y = "Position") +
   theme(legend.position="none") +
   scale_discrete_manual(aesthetics = "point_shape", values = c(21, 22, 23, 24, 15, 16, 17))
+
+
+
