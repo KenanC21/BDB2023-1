@@ -1,5 +1,9 @@
 ###### Data Aggregation #######
 
+library(extrafont)
+font_import()
+windowsFonts("Roboto" = windowsFont("Roboto"))
+
 defensive_influence <- data.frame()
 all_blocking_responsibilities <- data.frame()
 players <- read_csv("players.csv")
@@ -28,7 +32,7 @@ players <- read_csv("players.csv")
 for (wk in 1:8)
 {
   week_blocking <- read_csv(paste0("week", wk, "_blocking_assignments.csv"))
-  week_influence <- read_csv(paste0("week", wk, "_influence.csv"))
+  week_influence <- read_csv(paste0("new_week", wk, "_influence.csv"))
   week_track <- read_csv(paste0("week", wk, ".csv"))
   
   week_influence %>%
@@ -73,12 +77,10 @@ defensive_influence %>%
   inner_join(players) %>%
   filter(officialPosition %in% c("DE", "SS", "FS", "NT", "DT", "CB", "OLB", "MLB", "ILB", "LB", "DB")) %>%
   arrange(desc(avg_net_influence)) %>%
-  filter(plays > 100) -> defensive_players
-
-defensive_players <- defensive_players %>%
+  filter(plays > 100) %>%
   group_by(officialPosition) %>%
   mutate(index = scale(avg_net_influence),
-         position_rank = 1:n())
+         position_rank = 1:n()) -> defensive_players
 
 defensive_players %>%
   select(displayName, officialPosition, avg_net_influence, position_rank) %>%
@@ -101,16 +103,113 @@ offensive_players <- offensive_influence %>%
   summarize(avg_net_influence = mean(offensive_net_influence),
             sum_net_influence = sum(offensive_net_influence),
             plays = n(),
+            games = n_distinct(gameId),
             team = last(team)) %>%
   ungroup() %>%
   arrange(desc(avg_net_influence)) %>%
-  filter(plays > 150) %>%
+  filter(plays > 200) %>%
   inner_join(players, by = c("lineman_nflId" = "nflId")) %>%
   group_by(officialPosition) %>%
   mutate(index = scale(avg_net_influence),
          position_rank = 1:n())
 
-offensive_players %>%
-  ggplot(aes(x = ))
+##### Sanity checks ##### (any player named a team by any major outlet)
+
+# 2021 All-Pro teams 
+# Name (Position Rank)
+# OFFENSE #
+# Trent Williams (30)
+# Joel Bitonio (44)
+# Jason Kelce (3)
+# Zack Martin (5)
+# Tristan Wirfs (24)
+# Rashawn Slater (43)
+# Quenton Nelson (DNQ)
+# Corey Linsley (10)
+# Wyatt Teller (43)
+# Lane Johnson (DNQ)
+
+# DEFENSE #
+# TJ Watt (13)
+# Myles Garrett (8)
+# Aaron Donald (2)
+# Cameron Heyward (18)
+# Chris Jones (1)
+# Micah Parsons (34)
+# Shaquille Leonard (DNQ)
+# De'Vondre Campbell (DNQ)
+# Robert Quinn (1)
+# Maxx Crosby (2)
+# Jeffery Simmons (7)
+# Demario Davis (DNQ)
+# Roquan Smith (DNQ)
+# Bobby Wagner (DNQ)
+
+##### Visualizations for first four vs second four correlation
+
+### DEFENSE ###
+defensive_players_half_season <- defensive_influence %>%
+  mutate(half = case_when(week <= 4 ~ 1,
+                          week > 4 ~ 2)) %>%
+  group_by(nflId) %>%
+  summarize(avg_net_influence_first_four = mean(net_influence[half == 1]),
+            avg_net_influence_second_four = mean(net_influence[half == 2]),
+            sum_net_influence = sum(net_influence),
+            plays = n(),
+            team = last(team),
+            weeks = n_distinct(gameId)) %>%
+  inner_join(players) %>%
+  filter(officialPosition %in% c("DE", "SS", "FS", "NT", "DT", "CB", "OLB", "MLB", "ILB", "LB", "DB")) %>%
+  filter(plays > 100, games >= 6)
+
+cor(defensive_players_half_season$avg_net_influence_first_four, defensive_players_half_season$avg_net_influence_second_four)^2
+
+defensive_players_half_season %>%
+  ggplot(aes(x = avg_net_influence_first_four, y = avg_net_influence_second_four, color = officialPosition)) +
+  geom_point() +
+  labs(title = "Ownership Gained for Defensive Linemen in First 4 Games vs Last 4 Games",
+       subtitle = "Minimum 100 Total Snaps and 6 Games Played",
+       x = "Ownership Gained in First 4 Games",
+       y = "Ownership Gained in Last 4 Games",
+       color = "Position") +
+  theme_minimal() +
+  annotate(geom = "text", label = "R^2: 0.89", x = -0.013, y = 0.015, size = 5, family = "Roboto") +
+  theme(text = element_text(family = "Roboto"))
+
+
+
+### OFFENSE ###
+offensive_players_half_seasons <- offensive_influence %>%
+  mutate(weighted_offensive_net_influence = -net_influence * responsibility_pct,
+         half = case_when(week <= 4 ~ 1,
+                          week > 4 ~ 2)) %>%
+  group_by(gameId, playId, lineman_nflId, team, half) %>%
+  summarize(offensive_net_influence = sum(weighted_offensive_net_influence),
+            half = last(half)) %>%
+  ungroup() %>%
+  group_by(lineman_nflId) %>%
+  summarize(avg_net_influence_first_four = mean(offensive_net_influence[half == 1]),
+            avg_net_influence_second_four = mean(offensive_net_influence[half == 2]),
+            sum_net_influence = sum(offensive_net_influence),
+            plays = n(),
+            games = n_distinct(gameId),
+            team = last(team)) %>%
+  ungroup() %>%
+  filter(plays > 200, games >= 6) %>%
+  inner_join(players, by = c("lineman_nflId" = "nflId"))
+
+cor(offensive_players_half_seasons$avg_net_influence_first_four, offensive_players_half_seasons$avg_net_influence_second_four)^2
+
+offensive_players_half_seasons %>%
+  ggplot(aes(x = avg_net_influence_first_four, y = avg_net_influence_second_four, color = officialPosition)) +
+  geom_point() +
+  labs(title = "Ownership Gained for Offensive Linemen in First 4 Games vs Last 4 Games",
+       subtitle = "Minimum 200 Total Snaps and 6 Games Played",
+       x = "Ownership Gained in First 4 Games",
+       y = "Ownership Gained in Last 4 Games",
+       color = "Position") +
+  theme_minimal() +
+  annotate(geom = "text", label = "R^2: 0.78", x = -0.013, y = -0.003, size = 5, family = "Roboto") +
+  theme(text = element_text(family = "Roboto"))
 
 
