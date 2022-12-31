@@ -213,3 +213,19 @@ offensive_players_half_seasons %>%
   theme(text = element_text(family = "Roboto"))
 
 
+
+### JOINED ###
+all_linemen = rbind(offensive_players, defensive_players)
+
+ggplot(all_linemen, aes(x = avg_net_influence, y = officialPosition, fill = officialPosition)) +
+  geom_density_ridges(
+    aes(point_fill = officialPosition, color = officialPosition), 
+    alpha = .2, point_alpha = 1, jittered_points = TRUE
+  ) +
+  theme_minimal() +
+  labs(title = "Ownership Gained for Linemen in First 8 Games",
+       subtitle = "Minimum 100 Total Snaps and 6 Games Played",
+       x = "Average Ownership Gained",
+       y = "Position") +
+  theme(legend.position="none") +
+  scale_discrete_manual(aesthetics = "point_shape", values = c(21, 22, 23, 24, 15, 16, 17))
