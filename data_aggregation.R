@@ -4,6 +4,8 @@ library(extrafont)
 library(ggridges)
 library(RColorBrewer)
 library(viridis)
+library(nflfastR)
+library(ggimage)
 #font_import()
 windowsFonts("Roboto" = windowsFont("Roboto"))
 
@@ -246,4 +248,62 @@ og_position_dist_plot <- ggplot(all_linemen, aes(x = avg_net_influence, y = offi
   scale_fill_viridis(discrete = T)
   
 ggsave("og_position_dist_plot.jpeg", og_position_dist_plot, width = 8)
+
+
+#### Individual Players ####
+offensive_players <- offensive_players %>%
+  inner_join(teams_colors_logos, by = c("team" = "team_abbr"))
+
+defensive_players <- defensive_players %>%
+  inner_join(teams_colors_logos, by = c("team" = "team_abbr"))
+
+
+### Offensive Tackles ###
+t_top_10 <- offensive_players %>%
+  arrange(desc(avg_net_influence)) %>%
+  filter(position_rank <= 10, officialPosition == "T")
+
+t_top_10 %>%
+  ggplot(aes(x = avg_net_influence, y = reorder(displayName, avg_net_influence))) +
+  geom_col(fill = t_top_10$team_color) +
+  geom_image(aes(image = t_top_10$team_logo_wikipedia), nudge_x = ifelse(t_top_10$avg_net_influence > 0, 0.0007, -0.0007),
+             size = 0.08) +
+  theme_minimal() +
+  labs(x = "Ownership Gained Per Play") +
+  theme(text = element_text(family = "Roboto"),
+        axis.title.y = element_blank()) +
+  xlim(c(-0.011, 0.004))
+
+### Offensive guards ###
+g_top_10 <- offensive_players %>%
+  arrange(desc(avg_net_influence)) %>%
+  filter(position_rank <= 10, officialPosition == "G")
+
+g_top_10 %>%
+  ggplot(aes(x = avg_net_influence, y = reorder(displayName, avg_net_influence))) +
+  geom_col(fill = g_top_10$team_color) +
+  geom_image(aes(image = g_top_10$team_logo_wikipedia), nudge_x = 0.0002,
+             size = 0.08) +
+  theme_minimal() +
+  labs(x = "Ownership Gained Per Play") +
+  theme(text = element_text(family = "Roboto"),
+        axis.title.y = element_blank()) +
+  xlim(c(0, 0.004))
+
+#### Centers ###
+c_top_10 <- offensive_players %>%
+  arrange(desc(avg_net_influence)) %>%
+  filter(position_rank <= 10, officialPosition == "C")
+
+c_top_10 %>%
+  ggplot(aes(x = avg_net_influence, y = reorder(displayName, avg_net_influence))) +
+  geom_col(fill = c_top_10$team_color) +
+  geom_image(aes(image = c_top_10$team_logo_wikipedia), nudge_x = 0.0002,
+             size = 0.08) +
+  theme_minimal() +
+  labs(x = "Ownership Gained Per Play") +
+  theme(text = element_text(family = "Roboto"),
+        axis.title.y = element_blank()) +
+  xlim(c(0, 0.004))
+
 
