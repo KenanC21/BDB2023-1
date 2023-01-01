@@ -1,7 +1,10 @@
 ###### Data Aggregation #######
-
+library(tidyverse)
 library(extrafont)
-font_import()
+library(ggridges)
+library(RColorBrewer)
+library(viridis)
+#font_import()
 windowsFonts("Roboto" = windowsFont("Roboto"))
 
 defensive_influence <- data.frame()
@@ -157,16 +160,17 @@ defensive_players_half_season <- defensive_influence %>%
             sum_net_influence = sum(net_influence),
             plays = n(),
             team = last(team),
-            weeks = n_distinct(gameId)) %>%
+            games = n_distinct(gameId)) %>%
   inner_join(players) %>%
   filter(officialPosition %in% c("DE", "SS", "FS", "NT", "DT", "CB", "OLB", "MLB", "ILB", "LB", "DB")) %>%
   filter(plays > 100, games >= 6)
 
 cor(defensive_players_half_season$avg_net_influence_first_four, defensive_players_half_season$avg_net_influence_second_four)^2
 
-defensive_players_half_season %>%
+def_cor_plot <- defensive_players_half_season %>%
   ggplot(aes(x = avg_net_influence_first_four, y = avg_net_influence_second_four, color = officialPosition)) +
-  geom_point() +
+  geom_point(size = 2.5) +
+  geom_point(size = 2.5, shape = 1, color = "black") +
   labs(title = "Ownership Gained for Defensive Linemen in First 4 Games vs Last 4 Games",
        subtitle = "Minimum 100 Total Snaps and 6 Games Played",
        x = "Ownership Gained in First 4 Games",
@@ -174,9 +178,10 @@ defensive_players_half_season %>%
        color = "Position") +
   theme_minimal() +
   annotate(geom = "text", label = "R^2: 0.89", x = -0.013, y = 0.015, size = 5, family = "Roboto") +
+  scale_color_viridis(discrete = T) +
   theme(text = element_text(family = "Roboto"))
 
-
+ggsave("def_cor_plot.jpeg", def_cor_plot, width = 8)
 
 ### OFFENSE ###
 offensive_players_half_seasons <- offensive_influence %>%
@@ -200,9 +205,10 @@ offensive_players_half_seasons <- offensive_influence %>%
 
 cor(offensive_players_half_seasons$avg_net_influence_first_four, offensive_players_half_seasons$avg_net_influence_second_four)^2
 
-offensive_players_half_seasons %>%
+off_cor_plot <- offensive_players_half_seasons %>%
   ggplot(aes(x = avg_net_influence_first_four, y = avg_net_influence_second_four, color = officialPosition)) +
-  geom_point() +
+  geom_point(size = 2.5) +
+  geom_point(size = 2.5, shape = 1, color = "black") +
   labs(title = "Ownership Gained for Offensive Linemen in First 4 Games vs Last 4 Games",
        subtitle = "Minimum 200 Total Snaps and 6 Games Played",
        x = "Ownership Gained in First 4 Games",
@@ -210,26 +216,34 @@ offensive_players_half_seasons %>%
        color = "Position") +
   theme_minimal() +
   annotate(geom = "text", label = "R^2: 0.78", x = -0.013, y = -0.003, size = 5, family = "Roboto") +
+  scale_color_viridis(discrete = T) +
   theme(text = element_text(family = "Roboto"))
 
+ggsave("off_cor_plot.jpeg", off_cor_plot, width = 8)
 
+display.brewer.all()
 
 
 ### JOINED ###
 all_linemen = rbind(offensive_players, defensive_players)
 
-ggplot(all_linemen, aes(x = avg_net_influence, y = officialPosition, fill = officialPosition)) +
+all_linemen$officialPosition <- factor(all_linemen$officialPosition, levels = c("OLB", "NT", "DT", "DE", "C", "G", "T"))
+
+og_position_dist_plot <- ggplot(all_linemen, aes(x = avg_net_influence, y = officialPosition, fill = officialPosition)) +
   geom_density_ridges(
     aes(point_fill = officialPosition, color = officialPosition), 
     alpha = .2, point_alpha = 1, jittered_points = TRUE
   ) +
   theme_minimal() +
   labs(title = "Ownership Gained for Linemen in First 8 Games",
-       subtitle = "Minimum 100 Total Snaps and 6 Games Played",
+       subtitle = "Minimum 100 (Defensive) or 200 (Offensive) Total Snaps and 6 Games Played",
        x = "Average Ownership Gained",
        y = "Position") +
-  theme(legend.position="none") +
-  scale_discrete_manual(aesthetics = "point_shape", values = c(21, 22, 23, 24, 15, 16, 17))
-
-
+  theme(legend.position="none",
+        text = element_text(family = "Roboto")) +
+  scale_discrete_manual(aesthetics = "point_shape", values = c(21, 22, 23, 24, 15, 16, 17)) +
+  scale_color_viridis(discrete = T) +
+  scale_fill_viridis(discrete = T)
+  
+ggsave("og_position_dist_plot.jpeg", og_position_dist_plot, width = 8)
 
