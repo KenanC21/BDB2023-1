@@ -1,5 +1,10 @@
 ### OL and DL unit evaluations by team
 library(gt)
+library(extrafont)
+library(RColorBrewer)
+library(viridis)
+
+windowsFonts("Roboto" = windowsFont("Roboto"))
 
 players <- read_csv("players.csv")
 plays <- read_csv("plays.csv")
@@ -8,7 +13,7 @@ all_plays_team_influence <- data.frame()
 
 for (wk in 1:8)
 {
-  week_influence <- read_csv(paste0("week", wk, "_influence.csv"))
+  week_influence <- read_csv(paste0("new_week", wk, "_influence.csv"))
   week_track <- read_csv(paste0("week", wk, ".csv"))
   
   week_influence %>%
@@ -55,6 +60,7 @@ all_plays_team_influence %>%
   ggplot(aes(x = influence_binned, y = n, fill = outcome_text)) +
   geom_col(position = "fill") +
   scale_y_continuous(labels = scales::percent) +
+  scale_fill_viridis(discrete = T) + 
   theme_minimal() +
   labs(fill = "Play Outcome",
        x = "Offensive Field Control at End of Play",
