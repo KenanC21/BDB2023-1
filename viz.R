@@ -5,6 +5,14 @@ week1 <- read_csv("week1.csv")
 pff <- read_csv("pffScoutingData.csv")
 plays <- read_csv("plays.csv")
 week1_blocking <- read_csv("week1_blocking_assignments.csv")
+library(extrafont)
+library(ggridges)
+library(RColorBrewer)
+library(viridis)
+library(nflfastR)
+library(ggimage)
+#font_import()
+windowsFonts("Roboto" = windowsFont("Roboto"))
 
 ###### Get screenshot of example play for illustrating how the backtracking and forward checking works
 
@@ -60,13 +68,18 @@ ggsave(plot = example_play_plot, filename = "example_play.jpeg", width = 8, unit
 example_play <- week1 %>%
   filter(gameId == 2021090900, playId == 97)
 
+tictoc::tic()
 example_play_influence <- find_play_influence(97, example_play)
+tictoc::toc()
 
 team_example_play_influence <- example_play_influence %>%
   group_by(x, y, frameId) %>%
   summarize(team_control = sum(influence[team == "TB"]) - sum(influence[team == "DAL"]), # use exponential function as defined in Fernandez and Bornn's paper
             team_control = exp(team_control) / (1 + exp(team_control)),
             ownership = round(team_control))
+
+min_frame <- min(example_play$frameId)
+max_frame <- max(example_play$frameId)
 
 ggplot() +
   geom_raster(data = team_example_play_influence, aes(x = x, y = y, fill = team_control), alpha = 0.7, interpolate = T) +
@@ -80,11 +93,12 @@ ggplot() +
             vjust = 0.36, size = 3.5) +
   transition_time(frameId) +
   coord_fixed() +
-  ease_aes('linear') -> anim
+  ease_aes('linear') +
+  theme_minimal() +
+  theme(text = element_text(family = "Roboto"),
+        axis.title = element_blank()) -> anim
 
-play.length.ex <- max(team_example_play_influence$frameId)
-
-animate(anim, fps = 10, nframes = play.length.ex + 5, width = 1000, end_pause = 5)
+animate(anim, fps = 10, nframes = max_frame - min_frame + 5, width = 1000, end_pause = 5)
 
 anim_save("field_control_example.gif")
 
@@ -108,12 +122,41 @@ ggplot() +
   geom_text(data = example_play, aes(x = x, y = y, label = jerseyNumber), color = "white",
             vjust = 0.36, size = 3.5) +
   transition_time(frameId) +
-  theme(text = element_text(family = "Roboto")) +
   ease_aes('linear') +
-  coord_fixed() -> anim
+  coord_fixed() +
+  theme_minimal() +
+  theme(text = element_text(family = "Roboto"),
+        axis.title = element_blank()) -> anim
 
-animate(anim, fps = 10, nframes = play.length.ex + 5, width = 1000, end_pause = 5)
+animate(anim, fps = 10, nframes = max_frame - min_frame + 5, width = 1000, end_pause = 5)
 
 anim_save("blocking_assignment_example.gif")
 
+
+# Combine the blocking responsibilities with the field control
+
+min_frame <- min(example_play$frameId)
+max_frame <- max(example_play$frameId)
+
+ggplot() +
+  geom_raster(data = team_example_play_influence, aes(x = x, y = y, fill = team_control), alpha = 0.7, interpolate = T) +
+  scale_fill_gradient(high = "#e31837", low = "#002244",
+                      limits = c(0, 1)) +
+  new_scale("fill") +
+  geom_segment(aes(x = lineman_x, y = lineman_y, xend = defender_x, yend = defender_y), data = example_play_blocking) +
+  geom_point(data = example_play, aes(x = x, y = y, color = team, group = nflId), alpha = 0.7,
+             size = 6.5) +
+  scale_color_manual(values = c("#002244", "#654321", "#e31837"), guide = "none") +
+  geom_text(data = example_play, aes(x = x, y = y, label = jerseyNumber), color = "white",
+            vjust = 0.36, size = 3.5) +
+  transition_time(frameId) +
+  coord_fixed() +
+  ease_aes('linear') +
+  theme_minimal() +
+  theme(text = element_text(family = "Roboto"),
+        axis.title = element_blank()) -> anim
+
+animate(anim, fps = 10, nframes = max_frame - min_frame + 5, width = 1000, end_pause = 5)
+
+anim_save("field_control_with_blocking_example.gif")
 
