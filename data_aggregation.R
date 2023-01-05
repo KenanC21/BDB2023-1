@@ -307,3 +307,133 @@ c_top_10 %>%
   xlim(c(0, 0.004))
 
 
+### TOP 5 LEADERBOARD ###
+Top_5_by_pos = all_linemen %>%
+  group_by(officialPosition) %>% 
+  filter(position_rank < 6)
+Top_5_by_pos$nflId <- ifelse(is.na(Top_5_by_pos$nflId), Top_5_by_pos$lineman_nflId, Top_5_by_pos$nflId)
+Top_5_by_pos = Top_5_by_pos %>% relocate(nflId)
+Top_5_by_pos = Top_5_by_pos %>% select(-c(lineman_nflId))
+Top_5_by_pos = Top_5_by_pos %>% relocate(position_rank)
+
+#load_roster from nflreadr to get 2021 headshots
+roster = nflreadr::load_rosters(2021)
+names(roster)[7] <- "displayName"
+newdf = merge(Top_5_by_pos, roster, by = 'displayName')
+newdf = newdf[-c(9), ]
+
+Top_5_by_pos = Top_5_by_pos %>% arrange(displayName)
+Top_5_by_pos = bind_cols(Top_5_by_pos,newdf %>% 
+            select(headshot_url))
+
+#Cleaned cols and will rename in gt_them_pff
+Top_5_clean = Top_5_by_pos %>% 
+  select(officialPosition,position_rank,displayName,headshot_url,team,games,plays,
+                      avg_net_influence, sum_net_influence)
+Top_5_clean = Top_5_clean %>% arrange(officialPosition, position_rank)
+
+Top5_OL = Top_5_clean %>% 
+  filter((officialPosition == 'C')|(officialPosition == 'G')|(officialPosition == 'T'))
+Top5_DL = Top_5_clean %>% 
+  filter((officialPosition == 'DE')|(officialPosition == 'DT')|(officialPosition == 'NT')|
+           (officialPosition == 'OLB'))
+
+#gt theme from TheMockUp
+gt_theme_pff <- function(data, ...) {
+  data %>%
+    # Add head shot w/ web_image
+    text_transform(
+      locations = cells_body(
+        vars(headshot_url)
+      ),
+      fn = function(x) {
+        web_image(
+          url = x,
+          height = 35
+        )
+      }
+    ) %>%
+    # Relabel columns
+    cols_label(
+      position_rank = 'Rank',
+      headshot_url = " ",
+      avg_net_influence = 'AVG Influence',
+      sum_net_influence = 'Total Influence'
+    ) %>%
+    # if missing, replace NA w/ ---
+    fmt_missing(
+      columns = everything(),
+      missing_text = "---"
+    ) %>%
+    # Change font color and weight for numeric col
+    tab_style(
+      style = list(
+        cell_text(color = "#3a3d42", weight = "bold")
+      ),
+      locations = cells_body(
+        columns = 5:9
+      )
+    ) %>%
+    # Make column labels and spanners all caps
+    opt_all_caps() %>%
+    # add row striping
+    opt_row_striping() %>%
+    # change overall table styling for borders and striping
+    tab_options(
+      column_labels.background.color = "#585d63",
+      table_body.hlines.color = "transparent",
+      table.border.top.width = px(3),
+      table.border.top.color = "transparent",
+      table.border.bottom.color = "transparent",
+      table.border.bottom.width = px(3),
+      column_labels.border.top.width = px(3),
+      column_labels.border.top.color = "transparent",
+      column_labels.border.bottom.width = px(3),
+      column_labels.border.bottom.color = "transparent",
+      row.striping.background_color = "#f9f9fb",
+      data_row.padding = px(3),
+      ...
+    ) %>%
+    cols_width(
+      2 ~ px(70),
+      3 ~ px(150),
+      8 ~ px(125),
+      9 ~ px(125),
+      everything() ~ px(60)
+    ) %>% 
+    # change color of border separating the text from the sourcenote
+    tab_style(
+      style = cell_borders(
+        sides = "bottom", color = "#585d63", weight = px(2)
+      ),
+      locations = cells_body(
+        columns = TRUE,
+        rows = nrow(data$`_data`)
+      )
+    ) %>%
+    # change font to Lato throughout (note no need to have Lato locally!)
+    opt_table_font(
+      font = c(
+        google_font(name = "Lato"),
+        default_fonts()
+      )
+    )
+}
+
+## OL TOP 5
+Top5_OL %>% 
+  gt() %>% 
+  fmt_number(
+    columns = 8:9,
+    decimals = 7
+  ) %>% 
+  gt_theme_pff()
+
+## DL TOP 5
+Top5_DL %>% 
+  gt() %>% 
+  fmt_number(
+    columns = 8:9,
+    decimals = 7
+  ) %>% 
+  gt_theme_pff()
