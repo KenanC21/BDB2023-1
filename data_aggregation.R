@@ -6,6 +6,7 @@ library(RColorBrewer)
 library(viridis)
 library(nflfastR)
 library(ggimage)
+library(gt)
 #font_import()
 windowsFonts("Roboto" = windowsFont("Roboto"))
 
@@ -223,8 +224,6 @@ off_cor_plot <- offensive_players_half_seasons %>%
 
 ggsave("off_cor_plot.jpeg", off_cor_plot, width = 8)
 
-display.brewer.all()
-
 
 ### JOINED ###
 all_linemen = rbind(offensive_players, defensive_players)
@@ -256,56 +255,6 @@ offensive_players <- offensive_players %>%
 
 defensive_players <- defensive_players %>%
   inner_join(teams_colors_logos, by = c("team" = "team_abbr"))
-
-
-### Offensive Tackles ###
-t_top_10 <- offensive_players %>%
-  arrange(desc(avg_net_influence)) %>%
-  filter(position_rank <= 10, officialPosition == "T")
-
-t_top_10 %>%
-  ggplot(aes(x = avg_net_influence, y = reorder(displayName, avg_net_influence))) +
-  geom_col(fill = t_top_10$team_color) +
-  geom_image(aes(image = t_top_10$team_logo_wikipedia), nudge_x = ifelse(t_top_10$avg_net_influence > 0, 0.0007, -0.0007),
-             size = 0.08) +
-  theme_minimal() +
-  labs(x = "Ownership Gained Per Play") +
-  theme(text = element_text(family = "Roboto"),
-        axis.title.y = element_blank()) +
-  xlim(c(-0.011, 0.004))
-
-### Offensive guards ###
-g_top_10 <- offensive_players %>%
-  arrange(desc(avg_net_influence)) %>%
-  filter(position_rank <= 10, officialPosition == "G")
-
-g_top_10 %>%
-  ggplot(aes(x = avg_net_influence, y = reorder(displayName, avg_net_influence))) +
-  geom_col(fill = g_top_10$team_color) +
-  geom_image(aes(image = g_top_10$team_logo_wikipedia), nudge_x = 0.0002,
-             size = 0.08) +
-  theme_minimal() +
-  labs(x = "Ownership Gained Per Play") +
-  theme(text = element_text(family = "Roboto"),
-        axis.title.y = element_blank()) +
-  xlim(c(0, 0.004))
-
-#### Centers ###
-c_top_10 <- offensive_players %>%
-  arrange(desc(avg_net_influence)) %>%
-  filter(position_rank <= 10, officialPosition == "C")
-
-c_top_10 %>%
-  ggplot(aes(x = avg_net_influence, y = reorder(displayName, avg_net_influence))) +
-  geom_col(fill = c_top_10$team_color) +
-  geom_image(aes(image = c_top_10$team_logo_wikipedia), nudge_x = 0.0002,
-             size = 0.08) +
-  theme_minimal() +
-  labs(x = "Ownership Gained Per Play") +
-  theme(text = element_text(family = "Roboto"),
-        axis.title.y = element_blank()) +
-  xlim(c(0, 0.004))
-
 
 ### TOP 5 LEADERBOARD ###
 Top_5_by_pos = all_linemen %>%
@@ -357,8 +306,9 @@ gt_theme_pff <- function(data, ...) {
     cols_label(
       position_rank = 'Rank',
       headshot_url = " ",
-      avg_net_influence = 'AVG Influence',
-      sum_net_influence = 'Total Influence'
+      plays = "Snaps",
+      avg_net_influence = 'AVG Ownership Gained',
+      displayName = "Player"
     ) %>%
     # if missing, replace NA w/ ---
     fmt_missing(
@@ -368,10 +318,10 @@ gt_theme_pff <- function(data, ...) {
     # Change font color and weight for numeric col
     tab_style(
       style = list(
-        cell_text(color = "#3a3d42", weight = "bold")
+        cell_text(color = "black", weight = "bold")
       ),
       locations = cells_body(
-        columns = 5:9
+        columns = 5
       )
     ) %>%
     # Make column labels and spanners all caps
@@ -380,7 +330,7 @@ gt_theme_pff <- function(data, ...) {
     opt_row_striping() %>%
     # change overall table styling for borders and striping
     tab_options(
-      column_labels.background.color = "#585d63",
+      column_labels.background.color = "black",
       table_body.hlines.color = "transparent",
       table.border.top.width = px(3),
       table.border.top.color = "transparent",
@@ -391,20 +341,19 @@ gt_theme_pff <- function(data, ...) {
       column_labels.border.bottom.width = px(3),
       column_labels.border.bottom.color = "transparent",
       row.striping.background_color = "#f9f9fb",
-      data_row.padding = px(3),
-      ...
+      data_row.padding = px(3)
     ) %>%
     cols_width(
-      2 ~ px(70),
-      3 ~ px(150),
-      8 ~ px(125),
-      9 ~ px(125),
+      position_rank ~ px(70),
+      displayName ~ px(150),
+      headshot_url ~ px(60),
+      avg_net_influence ~ px(150),
       everything() ~ px(60)
     ) %>% 
     # change color of border separating the text from the sourcenote
     tab_style(
       style = cell_borders(
-        sides = "bottom", color = "#585d63", weight = px(2)
+        sides = "bottom", color = "black", weight = px(2)
       ),
       locations = cells_body(
         columns = TRUE,
@@ -413,27 +362,40 @@ gt_theme_pff <- function(data, ...) {
     ) %>%
     # change font to Lato throughout (note no need to have Lato locally!)
     opt_table_font(
-      font = c(
-        google_font(name = "Lato"),
-        default_fonts()
-      )
-    )
+      font = "Roboto"
+      ) %>%
+    cols_align("center") %>%
+    opt_align_table_header("center") %>%
+    tab_style(style = cell_text(whitespace = "nowrap",
+                                align = "center"),
+              locations = cells_row_groups()) %>%
+    tab_style(style = cell_text(v_align = "middle"),
+              locations = cells_body())
 }
 
 ## OL TOP 5
-Top5_OL %>% 
-  gt() %>% 
-  fmt_number(
-    columns = 8:9,
-    decimals = 7
-  ) %>% 
-  gt_theme_pff()
+ol_table <- Top5_OL %>% 
+  select(officialPosition, position_rank, displayName, headshot_url, avg_net_influence, plays) %>%
+  mutate(avg_net_influence = round(avg_net_influence, 4),
+         officialPosition = case_when(officialPosition == "C" ~ "Center",
+                                      officialPosition == "G" ~ "Guard",
+                                      officialPosition == "T" ~ "Tackle")) %>%
+  gt(groupname_col = 'officialPosition') %>%
+  gt_theme_pff() %>%
+  tab_header(title = "Top 5 Offensive Linemen in Ownership Gained by Position",
+             subtitle = "First 8 Games of 2021 Season Only | Minimum of 200 Snaps")
 
 ## DL TOP 5
-Top5_DL %>% 
-  gt() %>% 
-  fmt_number(
-    columns = 8:9,
-    decimals = 7
-  ) %>% 
-  gt_theme_pff()
+dl_table <- Top5_DL %>% 
+  select(officialPosition, position_rank, displayName, headshot_url, avg_net_influence, plays) %>%
+  mutate(avg_net_influence = round(avg_net_influence, 4),
+         officialPosition = case_when(officialPosition == "OLB" ~ "Outside Linebacker",
+                                      officialPosition == "NT" ~ "Nose Tackle",
+                                      officialPosition == "DT" ~ "Defensive Tackle",
+                                      officialPosition == "DE" ~ "Defensive End")) %>%
+  gt(groupname_col = 'officialPosition') %>%
+  gt_theme_pff() %>%
+  tab_header(title = "Top 5 Defensive Linemen in Ownership Gained by Position",
+             subtitle = "First 8 Games of 2021 Season Only | Minimum of 100 Snaps")
+
+gtsave(ol_table, "ol_leaderboard_table.png")
