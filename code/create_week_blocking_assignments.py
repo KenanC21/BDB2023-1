@@ -68,5 +68,5 @@ for index, iter_frame in frames.iterrows():
 end_time = time.time()
 
 print(results)
-results.to_csv('week2_blocking_assignments.csv')
+results.to_csv('../data/week2_blocking_assignments.csv')
 print(end_time - start_time, "seconds")
