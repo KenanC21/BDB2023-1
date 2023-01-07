@@ -13,7 +13,7 @@ all_plays_team_influence <- data.frame()
 
 for (wk in 1:8)
 {
-  week_influence <- read_csv(paste0("new_week", wk, "_influence.csv"))
+  week_influence <- read_csv(paste0("../data/week", wk, "_influence.csv"))
   week_track <- read_csv(paste0("week", wk, ".csv"))
   
   week_influence %>%
@@ -65,8 +65,7 @@ all_plays_team_influence %>%
   labs(fill = "Play Outcome",
        x = "Offensive Field Control at End of Play",
        title = "Passing Play Outcomes by Offensive Field Control at End of Play",
-       subtitle = "Data: 2023 NFL Big Data Bowl | Weeks 1-8 of 2021 NFL Season",
-       caption = "Visualization by Kenan Clarke and Michael Egle") +
+       subtitle = "Data: 2023 NFL Big Data Bowl | Weeks 1-8 of 2021 NFL Season") +
   theme(text = element_text(family = "Roboto"),
         axis.title.y = element_blank()) -> influence_outcomes_viz
 
