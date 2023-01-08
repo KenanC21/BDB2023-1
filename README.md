@@ -1,4 +1,4 @@
-# God Rush, Bad Blocking: A Spatial Analysis of the Trenches
+# Good Rush, Bad Blocking: A Spatial Analysis of the Trenches
 ## By [Kenan Clarke](https://twitter.com/kdclarke_21) and [Michael Egle](https://twitter.com/deceptivespeed_)
 
 This is the repo for our Big Data Bowl project, everything is fully reproducible with the data provided by the NFL. You can run some of create_week_blocking_assignments.py and create_one_week_field_control.R files but they take a bit of time and the results are already pre-compiled in the data folder.
